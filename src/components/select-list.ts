@@ -1,5 +1,5 @@
 import { Container, Input, SelectList, Text, type SelectItem, getEditorKeybindings } from '@mariozechner/pi-tui';
-import { PROVIDERS, type Model } from '../utils/model.js';
+import { MODEL_PROVIDERS, type Model } from '../utils/model.js';
 import type { ApprovalDecision } from '../agent/types.js';
 import { selectListTheme, theme } from '../theme.js';
 
@@ -44,7 +44,7 @@ export function createProviderSelector(
   currentProvider: string | undefined,
   onSelect: (providerId: string | null) => void,
 ) {
-  const items: SelectItem[] = PROVIDERS.map((provider, index) => ({
+  const items: SelectItem[] = MODEL_PROVIDERS.map((provider, index) => ({
     value: provider.providerId,
     label: `${index + 1}. ${provider.displayName}${currentProvider === provider.providerId ? ' ✓' : ''}`,
   }));

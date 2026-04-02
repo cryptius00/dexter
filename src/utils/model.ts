@@ -1,4 +1,4 @@
-import { PROVIDERS as PROVIDER_DEFS } from '@/providers';
+import { PROVIDERS } from '@/providers';
 
 export interface Model {
   id: string;
@@ -35,14 +35,14 @@ const PROVIDER_MODELS: Record<string, Model[]> = {
   ],
 };
 
-export const PROVIDERS: Provider[] = PROVIDER_DEFS.map((provider) => ({
+export const MODEL_PROVIDERS: Provider[] = PROVIDERS.map((provider) => ({
   displayName: provider.displayName,
   providerId: provider.id,
   models: PROVIDER_MODELS[provider.id] ?? [],
 }));
 
 export function getModelsForProvider(providerId: string): Model[] {
-  const provider = PROVIDERS.find((entry) => entry.providerId === providerId);
+  const provider = MODEL_PROVIDERS.find((entry) => entry.providerId === providerId);
   return provider?.models ?? [];
 }
 
@@ -58,7 +58,7 @@ export function getDefaultModelForProvider(providerId: string): string | undefin
 export function getModelDisplayName(modelId: string): string {
   const normalizedId = modelId.replace(/^(ollama|openrouter):/, '');
 
-  for (const provider of PROVIDERS) {
+  for (const provider of MODEL_PROVIDERS) {
     const model = provider.models.find((entry) => entry.id === normalizedId || entry.id === modelId);
     if (model) {
       return model.displayName;
