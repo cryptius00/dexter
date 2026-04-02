@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Agent } from '../agent/agent.js';
+import { DEFAULT_MODEL } from '../model/llm.js';
 import { EvalApp, type EvalProgressEvent } from './components/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -141,7 +142,7 @@ function shuffleArray<T>(array: T[]): T[] {
 // ============================================================================
 
 async function target(inputs: { question: string }): Promise<{ answer: string }> {
-  const agent = await Agent.create({ model: 'gpt-5.4', maxIterations: 10 });
+  const agent = await Agent.create({ model: DEFAULT_MODEL, maxIterations: 10 });
   let answer = '';
   
   for await (const event of agent.run(inputs.question)) {
@@ -154,7 +155,7 @@ async function target(inputs: { question: string }): Promise<{ answer: string }>
 }
 
 // ============================================================================
-// Correctness evaluator - LLM-as-judge using gpt-5.4
+// Correctness evaluator - LLM-as-judge using centralized default model
 // ============================================================================
 
 const EvaluatorOutputSchema = z.object({
@@ -163,7 +164,7 @@ const EvaluatorOutputSchema = z.object({
 });
 
 const llm = new ChatOpenAI({
-  model: 'gpt-5.4',
+  model: DEFAULT_MODEL,
   apiKey: process.env.OPENAI_API_KEY,
 });
 

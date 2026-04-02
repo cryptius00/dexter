@@ -14,6 +14,8 @@ export interface ProviderDef {
   apiKeyEnvVar?: string;
   /** Fast model variant for lightweight tasks like summarization. */
   fastModel?: string;
+  /** Default model ID for this provider when selected. */
+  defaultModel?: string;
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -22,35 +24,40 @@ export const PROVIDERS: ProviderDef[] = [
     displayName: 'OpenAI',
     modelPrefix: '',
     apiKeyEnvVar: 'OPENAI_API_KEY',
-    fastModel: 'gpt-4.1',
+    fastModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-4o',
   },
   {
     id: 'anthropic',
     displayName: 'Anthropic',
     modelPrefix: 'claude-',
     apiKeyEnvVar: 'ANTHROPIC_API_KEY',
-    fastModel: 'claude-haiku-4-5',
+    fastModel: 'claude-3-5-haiku-latest',
+    defaultModel: 'claude-3-5-sonnet-latest',
   },
   {
     id: 'google',
     displayName: 'Google',
     modelPrefix: 'gemini-',
     apiKeyEnvVar: 'GOOGLE_API_KEY',
-    fastModel: 'gemini-3-flash-preview',
+    fastModel: 'gemini-1.5-flash',
+    defaultModel: 'gemini-1.5-pro',
   },
   {
     id: 'xai',
     displayName: 'xAI',
     modelPrefix: 'grok-',
     apiKeyEnvVar: 'XAI_API_KEY',
-    fastModel: 'grok-4-1-fast-reasoning',
+    fastModel: 'grok-beta',
+    defaultModel: 'grok-2',
   },
   {
     id: 'moonshot',
     displayName: 'Moonshot',
     modelPrefix: 'kimi-',
     apiKeyEnvVar: 'MOONSHOT_API_KEY',
-    fastModel: 'kimi-k2-5',
+    fastModel: 'moonshot-v1-8k',
+    defaultModel: 'moonshot-v1-8k',
   },
   {
     id: 'deepseek',
@@ -58,6 +65,7 @@ export const PROVIDERS: ProviderDef[] = [
     modelPrefix: 'deepseek-',
     apiKeyEnvVar: 'DEEPSEEK_API_KEY',
     fastModel: 'deepseek-chat',
+    defaultModel: 'deepseek-chat',
   },
   {
     id: 'openrouter',

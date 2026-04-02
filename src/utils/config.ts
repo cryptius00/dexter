@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { dexterPath } from './paths.js';
+import { DEFAULT_MODEL } from '../model/llm.js';
 
 const SETTINGS_FILE = dexterPath('settings.json');
 
@@ -14,12 +15,13 @@ const MODEL_TO_PROVIDER_MAP: Record<string, string> = {
 
 // Deprecated model IDs to upgrade on load
 const DEPRECATED_MODEL_UPGRADES: Record<string, string> = {
-  'gpt-5.2': 'gpt-5.4',
+  'gpt-5.2': DEFAULT_MODEL,
+  'gpt-5.4': DEFAULT_MODEL,
 };
 
 interface Config {
   provider?: string;
-  modelId?: string;  // Selected model ID (e.g., "gpt-5.4", "ollama:llama3.1")
+  modelId?: string;  // Selected model ID (e.g., "gpt-4o", "ollama:llama3.1")
   model?: string;    // Legacy key, kept for migration
   memory?: {
     enabled?: boolean;
@@ -39,7 +41,7 @@ export function loadConfig(): Config {
     const content = readFileSync(SETTINGS_FILE, 'utf-8');
     let config = JSON.parse(content) as Config;
 
-    // Upgrade deprecated model IDs (e.g. gpt-5.2 -> gpt-5.4)
+    // Upgrade deprecated model IDs (e.g. gpt-5.2 -> gpt-4o)
     if (config.modelId && DEPRECATED_MODEL_UPGRADES[config.modelId]) {
       config.modelId = DEPRECATED_MODEL_UPGRADES[config.modelId];
       saveConfig(config);

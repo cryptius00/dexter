@@ -11,9 +11,9 @@ import { createRunContext, type RunContext } from './run-context.js';
 import { AgentToolExecutor } from './tool-executor.js';
 import { MemoryManager } from '../memory/index.js';
 import { ContextManager } from './context-manager.js';
+import { DEFAULT_MODEL } from '../model/llm.js';
 
 
-const DEFAULT_MODEL = 'gpt-5.4';
 const DEFAULT_MAX_ITERATIONS = 10;
 
 /**

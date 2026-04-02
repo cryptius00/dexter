@@ -13,25 +13,30 @@ interface Provider {
 
 const PROVIDER_MODELS: Record<string, Model[]> = {
   openai: [
-    { id: 'gpt-5.4', displayName: 'GPT 5.4' },
-    { id: 'gpt-4.1', displayName: 'GPT 4.1' },
+    { id: 'o3-mini', displayName: 'o3 Mini' },
+    { id: 'o1', displayName: 'o1' },
+    { id: 'gpt-4o', displayName: 'GPT-4o' },
+    { id: 'gpt-4o-mini', displayName: 'GPT-4o Mini' },
+    { id: 'gpt-4-turbo', displayName: 'GPT-4 Turbo' },
   ],
   anthropic: [
-    { id: 'claude-sonnet-4-6', displayName: 'Sonnet 4.6' },
-    { id: 'claude-opus-4-6', displayName: 'Opus 4.6' },
+    { id: 'claude-3-5-sonnet-latest', displayName: 'Claude 3.5 Sonnet' },
+    { id: 'claude-3-5-haiku-latest', displayName: 'Claude 3.5 Haiku' },
+    { id: 'claude-3-opus-latest', displayName: 'Claude 3 Opus' },
   ],
   google: [
-    { id: 'gemini-3-flash-preview', displayName: 'Gemini 3 Flash' },
-    { id: 'gemini-3.1-pro-preview', displayName: 'Gemini 3.1 Pro' },
+    { id: 'gemini-2.0-flash-exp', displayName: 'Gemini 2.0 Flash' },
+    { id: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro' },
+    { id: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash' },
   ],
   xai: [
-    { id: 'grok-4-0709', displayName: 'Grok 4' },
-    { id: 'grok-4-1-fast-reasoning', displayName: 'Grok 4.1 Fast Reasoning' },
+    { id: 'grok-2', displayName: 'Grok 2' },
+    { id: 'grok-beta', displayName: 'Grok Beta' },
   ],
-  moonshot: [{ id: 'kimi-k2-5', displayName: 'Kimi K2.5' }],
+  moonshot: [{ id: 'moonshot-v1-8k', displayName: 'Moonshot V1' }],
   deepseek: [
-    { id: 'deepseek-chat', displayName: 'DeepSeek V3' },
-    { id: 'deepseek-reasoner', displayName: 'DeepSeek R1' },
+    { id: 'deepseek-chat', displayName: 'DeepSeek Chat (V3)' },
+    { id: 'deepseek-reasoner', displayName: 'DeepSeek Reasoner (R1)' },
   ],
 };
 
@@ -51,6 +56,10 @@ export function getModelIdsForProvider(providerId: string): string[] {
 }
 
 export function getDefaultModelForProvider(providerId: string): string | undefined {
+  const providerDef = PROVIDERS.find((p) => p.id === providerId);
+  if (providerDef?.defaultModel) {
+    return providerDef.defaultModel;
+  }
   const models = getModelsForProvider(providerId);
   return models[0]?.id;
 }
