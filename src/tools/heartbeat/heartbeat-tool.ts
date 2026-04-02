@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { z } from 'zod';
 import { dexterPath } from '../../utils/paths.js';
+import { assertSandboxPath } from '../filesystem/sandbox.js';
 
 const HEARTBEAT_MD_PATH = dexterPath('HEARTBEAT.md');
 
@@ -42,11 +43,16 @@ export const heartbeatTool = new DynamicStructuredTool({
     'View or update the heartbeat checklist (.dexter/HEARTBEAT.md) that controls periodic monitoring.',
   schema: heartbeatSchema,
   func: async (input) => {
+    const { resolved: safePath } = await assertSandboxPath({
+      filePath: HEARTBEAT_MD_PATH,
+      cwd: process.cwd(),
+    });
+
     if (input.action === 'view') {
-      if (!existsSync(HEARTBEAT_MD_PATH)) {
+      if (!existsSync(safePath)) {
         return 'No heartbeat checklist configured yet. The heartbeat will use a default checklist (major index moves + breaking financial news). Use the update action to customize what gets checked.';
       }
-      const content = readFileSync(HEARTBEAT_MD_PATH, 'utf-8');
+      const content = readFileSync(safePath, 'utf-8');
       return `Current heartbeat checklist:\n\n${content}`;
     }
 
@@ -54,11 +60,11 @@ export const heartbeatTool = new DynamicStructuredTool({
       if (!input.content) {
         return 'Error: content is required for the update action.';
       }
-      const dir = dirname(HEARTBEAT_MD_PATH);
+      const dir = dirname(safePath);
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
-      writeFileSync(HEARTBEAT_MD_PATH, input.content, 'utf-8');
+      writeFileSync(safePath, input.content, 'utf-8');
 
       const lines = input.content.split('\n').filter((l) => l.trim().startsWith('-'));
       const summary = lines.length > 0
