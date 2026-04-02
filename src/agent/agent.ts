@@ -2,23 +2,19 @@ import { AIMessage } from '@langchain/core/messages';
 import { StructuredToolInterface } from '@langchain/core/tools';
 import { callLlm } from '../model/llm.js';
 import { getTools } from '../tools/registry.js';
-import { buildSystemPrompt, buildIterationPrompt, loadSoulDocument } from './prompts.js';
+import { buildSystemPrompt, loadSoulDocument } from './prompts.js';
 import { extractTextContent, hasToolCalls } from '../utils/ai-message.js';
 import { InMemoryChatHistory } from '../utils/in-memory-chat-history.js';
-import { buildHistoryContext } from '../utils/history-context.js';
-import { estimateTokens, CONTEXT_THRESHOLD, KEEP_TOOL_USES } from '../utils/tokens.js';
-import { formatUserFacingError, isContextOverflowError } from '../utils/errors.js';
-import type { AgentConfig, AgentEvent, ContextClearedEvent, TokenUsage } from '../agent/types.js';
+import { formatUserFacingError } from '../utils/errors.js';
+import type { AgentConfig, AgentEvent, TokenUsage } from '../agent/types.js';
 import { createRunContext, type RunContext } from './run-context.js';
 import { AgentToolExecutor } from './tool-executor.js';
 import { MemoryManager } from '../memory/index.js';
-import { runMemoryFlush, shouldRunMemoryFlush } from '../memory/flush.js';
+import { ContextManager } from './context-manager.js';
 
 
 const DEFAULT_MODEL = 'gpt-5.4';
 const DEFAULT_MAX_ITERATIONS = 10;
-const MAX_OVERFLOW_RETRIES = 2;
-const OVERFLOW_KEEP_TOOL_USES = 3;
 
 /**
  * The core agent class that handles the agent loop and tool execution.
@@ -32,6 +28,7 @@ export class Agent {
   private readonly systemPrompt: string;
   private readonly signal?: AbortSignal;
   private readonly memoryEnabled: boolean;
+  private readonly contextManager: ContextManager;
 
   private constructor(
     config: AgentConfig,
@@ -46,6 +43,7 @@ export class Agent {
     this.systemPrompt = systemPrompt;
     this.signal = config.signal;
     this.memoryEnabled = config.memoryEnabled ?? true;
+    this.contextManager = new ContextManager();
   }
 
   /**
@@ -89,7 +87,7 @@ export class Agent {
     const memoryFlushState = { alreadyFlushed: false };
 
     // Build initial prompt with conversation history context
-    let currentPrompt = this.buildInitialPrompt(query, inMemoryHistory);
+    let currentPrompt = this.contextManager.buildInitialPrompt(query, inMemoryHistory);
 
     // Main agent loop
     let overflowRetries = 0;
@@ -107,21 +105,12 @@ export class Agent {
           overflowRetries = 0;
           break;
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-
-          if (isContextOverflowError(errorMessage) && overflowRetries < MAX_OVERFLOW_RETRIES) {
+          const recovery = this.contextManager.handleOverflow(error, query, ctx.scratchpad, overflowRetries);
+          if (recovery) {
             overflowRetries++;
-            const clearedCount = ctx.scratchpad.clearOldestToolResults(OVERFLOW_KEEP_TOOL_USES);
-
-            if (clearedCount > 0) {
-              yield { type: 'context_cleared', clearedCount, keptCount: OVERFLOW_KEEP_TOOL_USES };
-              currentPrompt = buildIterationPrompt(
-                query,
-                ctx.scratchpad.getToolResults(),
-                ctx.scratchpad.formatToolUsageForPrompt()
-              );
-              continue;
-            }
+            yield recovery.event;
+            currentPrompt = recovery.currentPrompt;
+            continue;
           }
 
           const totalTime = Date.now() - ctx.startTime;
@@ -171,14 +160,15 @@ export class Agent {
           return;
         }
       }
-      yield* this.manageContextThreshold(ctx, query, memoryFlushState);
+      yield* this.contextManager.manageThreshold(ctx, {
+        model: this.model,
+        systemPrompt: this.systemPrompt,
+        memoryEnabled: this.memoryEnabled,
+        signal: this.signal,
+      }, memoryFlushState);
 
       // Build iteration prompt with full tool results (Anthropic-style)
-      currentPrompt = buildIterationPrompt(
-        query, 
-        ctx.scratchpad.getToolResults(),
-        ctx.scratchpad.formatToolUsageForPrompt()
-      );
+      currentPrompt = this.contextManager.buildIterationPrompt(query, ctx.scratchpad);
     }
 
     // Max iterations reached with no final response
@@ -228,68 +218,4 @@ export class Agent {
     };
   }
 
-  /**
-   * Clear oldest tool results if context size exceeds threshold.
-   */
-  private async *manageContextThreshold(
-    ctx: RunContext,
-    query: string,
-    memoryFlushState: { alreadyFlushed: boolean },
-  ): AsyncGenerator<ContextClearedEvent | AgentEvent, void> {
-    const fullToolResults = ctx.scratchpad.getToolResults();
-    const estimatedContextTokens = estimateTokens(this.systemPrompt + ctx.query + fullToolResults);
-
-    if (estimatedContextTokens > CONTEXT_THRESHOLD) {
-      if (
-        this.memoryEnabled &&
-        shouldRunMemoryFlush({
-          estimatedContextTokens,
-          alreadyFlushed: memoryFlushState.alreadyFlushed,
-        })
-      ) {
-        yield { type: 'memory_flush', phase: 'start' };
-        const flushResult = await runMemoryFlush({
-          model: this.model,
-          systemPrompt: this.systemPrompt,
-          query,
-          toolResults: fullToolResults,
-          signal: this.signal,
-        }).catch(() => ({ flushed: false, written: false as const }));
-        memoryFlushState.alreadyFlushed = flushResult.flushed;
-        yield {
-          type: 'memory_flush',
-          phase: 'end',
-          filesWritten: flushResult.written ? [`${new Date().toISOString().slice(0, 10)}.md`] : [],
-        };
-      }
-
-      const clearedCount = ctx.scratchpad.clearOldestToolResults(KEEP_TOOL_USES);
-      if (clearedCount > 0) {
-        memoryFlushState.alreadyFlushed = false;
-        yield { type: 'context_cleared', clearedCount, keptCount: KEEP_TOOL_USES };
-      }
-    }
-  }
-
-  /**
-   * Build initial prompt with conversation history context if available
-   */
-  private buildInitialPrompt(
-    query: string,
-    inMemoryChatHistory?: InMemoryChatHistory
-  ): string {
-    if (!inMemoryChatHistory?.hasMessages()) {
-      return query;
-    }
-
-    const recentTurns = inMemoryChatHistory.getRecentTurns();
-    if (recentTurns.length === 0) {
-      return query;
-    }
-
-    return buildHistoryContext({
-      entries: recentTurns,
-      currentMessage: query,
-    });
-  }
 }
