@@ -2,7 +2,7 @@ import { AIMessage } from '@langchain/core/messages';
 import { StructuredToolInterface } from '@langchain/core/tools';
 import { callLlm } from '../model/llm.js';
 import { getTools } from '../tools/registry.js';
-import { buildSystemPrompt, loadSoulDocument } from './prompts.js';
+import { buildSystemPrompt, loadSoulDocument, buildResearchPlanPrompt, buildCritiquePrompt } from './prompts.js';
 import { extractTextContent, hasToolCalls } from '../utils/ai-message.js';
 import { InMemoryChatHistory } from '../utils/in-memory-chat-history.js';
 import { formatUserFacingError } from '../utils/errors.js';
@@ -11,7 +11,7 @@ import { createRunContext, type RunContext } from './run-context.js';
 import { AgentToolExecutor } from './tool-executor.js';
 import { MemoryManager } from '../memory/index.js';
 import { ContextManager } from './context-manager.js';
-import { DEFAULT_MODEL } from '../model/llm.js';
+import { DEFAULT_MODEL, getReasoningModel } from '../model/llm.js';
 
 
 const DEFAULT_MAX_ITERATIONS = 10;
@@ -29,6 +29,7 @@ export class Agent {
   private readonly signal?: AbortSignal;
   private readonly memoryEnabled: boolean;
   private readonly contextManager: ContextManager;
+  private readonly modelProvider?: string;
 
   private constructor(
     config: AgentConfig,
@@ -44,6 +45,7 @@ export class Agent {
     this.signal = config.signal;
     this.memoryEnabled = config.memoryEnabled ?? true;
     this.contextManager = new ContextManager();
+    this.modelProvider = config.modelProvider;
   }
 
   /**
@@ -86,6 +88,19 @@ export class Agent {
     const ctx = createRunContext(query);
     const memoryFlushState = { alreadyFlushed: false };
 
+    // Senior Research Planning Phase
+    const planningModel = this.modelProvider ? getReasoningModel(this.modelProvider, this.model) : this.model;
+    const planPrompt = buildResearchPlanPrompt(query);
+    yield { type: 'thinking', message: `Developing senior research strategy using ${planningModel}...` };
+
+    const planResult = await this.callModel(planPrompt, false, planningModel);
+    const researchPlan = typeof planResult.response === 'string' ? planResult.response : extractTextContent(planResult.response);
+
+    if (researchPlan) {
+      ctx.scratchpad.addThinking(`RESEARCH STRATEGY:\n${researchPlan}`);
+      yield { type: 'thinking', message: 'Strategy developed. Starting investigation.' };
+    }
+
     // Build initial prompt with conversation history context
     let currentPrompt = this.contextManager.buildInitialPrompt(query, inMemoryHistory);
 
@@ -113,6 +128,7 @@ export class Agent {
             continue;
           }
 
+          const errorMessage = error instanceof Error ? error.message : String(error);
           const totalTime = Date.now() - ctx.startTime;
           yield {
             type: 'done',
@@ -171,6 +187,24 @@ export class Agent {
       currentPrompt = this.contextManager.buildIterationPrompt(query, ctx.scratchpad);
     }
 
+    // Senior Self-Critique Phase
+    const auditModel = this.modelProvider ? getReasoningModel(this.modelProvider, this.model) : this.model;
+    const critiquePrompt = buildCritiquePrompt(query, ctx.scratchpad.getToolResults());
+    yield { type: 'thinking', message: `Performing senior audit using ${auditModel}...` };
+
+    const critiqueResult = await this.callModel(critiquePrompt, false, auditModel);
+    const critique = typeof critiqueResult.response === 'string' ? critiqueResult.response : extractTextContent(critiqueResult.response);
+
+    if (critique) {
+      ctx.scratchpad.addThinking(`SENIOR AUDIT:\n${critique}`);
+      // Final call to generate the answer with the critique in context
+      currentPrompt = this.contextManager.buildIterationPrompt(query, ctx.scratchpad);
+      const finalResult = await this.callModel(currentPrompt);
+      const finalResponse = typeof finalResult.response === 'string' ? finalResult.response : extractTextContent(finalResult.response);
+      yield* this.handleDirectResponse(finalResponse ?? '', ctx);
+      return;
+    }
+
     // Max iterations reached with no final response
     const totalTime = Date.now() - ctx.startTime;
     yield {
@@ -188,10 +222,15 @@ export class Agent {
    * Call the LLM with the current prompt.
    * @param prompt - The prompt to send to the LLM
    * @param useTools - Whether to bind tools (default: true). When false, returns string directly.
+   * @param modelOverride - Optional model ID to use for this specific call.
    */
-  private async callModel(prompt: string, useTools: boolean = true): Promise<{ response: AIMessage | string; usage?: TokenUsage }> {
+  private async callModel(
+    prompt: string,
+    useTools: boolean = true,
+    modelOverride?: string
+  ): Promise<{ response: AIMessage | string; usage?: TokenUsage }> {
     const result = await callLlm(prompt, {
-      model: this.model,
+      model: modelOverride ?? this.model,
       systemPrompt: this.systemPrompt,
       tools: useTools ? this.tools : undefined,
       signal: this.signal,

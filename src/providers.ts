@@ -16,6 +16,8 @@ export interface ProviderDef {
   fastModel?: string;
   /** Default model ID for this provider when selected. */
   defaultModel?: string;
+  /** Specialized reasoning model for planning and complex analysis. */
+  reasoningModel?: string;
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -26,6 +28,7 @@ export const PROVIDERS: ProviderDef[] = [
     apiKeyEnvVar: 'OPENAI_API_KEY',
     fastModel: 'gpt-4o-mini',
     defaultModel: 'gpt-4o',
+    reasoningModel: 'o3-mini',
   },
   {
     id: 'anthropic',
@@ -34,6 +37,7 @@ export const PROVIDERS: ProviderDef[] = [
     apiKeyEnvVar: 'ANTHROPIC_API_KEY',
     fastModel: 'claude-3-5-haiku-latest',
     defaultModel: 'claude-3-5-sonnet-latest',
+    reasoningModel: 'claude-3-5-sonnet-latest',
   },
   {
     id: 'google',
@@ -66,6 +70,7 @@ export const PROVIDERS: ProviderDef[] = [
     apiKeyEnvVar: 'DEEPSEEK_API_KEY',
     fastModel: 'deepseek-chat',
     defaultModel: 'deepseek-chat',
+    reasoningModel: 'deepseek-reasoner',
   },
   {
     id: 'openrouter',

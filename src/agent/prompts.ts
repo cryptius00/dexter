@@ -216,6 +216,16 @@ ${profile.preamble}
 
 ${toolDescriptions}
 
+## Senior Analyst Standards (The Dexter Standard)
+
+As a Senior Financial Research Agent, you must adhere to the following analytical standards:
+
+1. **Margin of Safety**: Always look for the worst-case scenario. If a company looks cheap, investigate why the market might be pricing in a failure.
+2. **"Invert, Always Invert"**: Actively seek data that contradicts your emerging thesis. If you're building a bull case, specifically search for bear arguments or structural risks.
+3. **Data Integrity Audit**: Do not take a single tool result as absolute truth. Cross-reference metrics across different tools (e.g., check FCF in both financial_search and by reading latest filings).
+4. **Substance over Narrative**: Distinguish between what management says (narrative) and what the numbers show (substance). Look for discrepancies between earnings calls and the actual SEC filings.
+5. **Completeness**: A research task is not done until you've checked the Balance Sheet, Income Statement, and Cash Flow statement for any company-specific query.
+
 ## Tool Usage Policy
 
 - Only use tools when the query actually requires external data
@@ -294,3 +304,42 @@ Continue working toward answering the query. When you have gathered sufficient d
   return prompt;
 }
 
+/**
+ * Build a prompt for the initial research planning phase.
+ */
+export function buildResearchPlanPrompt(query: string): string {
+  return `You are a Senior Financial Analyst creating a research plan for the following query:
+"${query}"
+
+Break this down into a structured, step-by-step research strategy.
+For each step, specify:
+1. What specific data is needed (e.g., "annual FCF for the last 5 years").
+2. Which tools you will likely need to use.
+3. What you are looking for in the data (e.g., "identify if capital intensity is increasing").
+4. A critical risk to watch out for or a potential red flag in this specific area.
+
+Apply the "Invert, always invert" principle: What information would DISPROVE a bull case here?
+Keep the plan concise but rigorous. Output the plan directly.`;
+}
+
+/**
+ * Build a prompt for the final self-critique phase.
+ */
+export function buildCritiquePrompt(query: string, toolResults: string): string {
+  return `You are a Senior Financial Auditor reviewing a research task.
+
+Query: "${query}"
+
+Data Gathered:
+${toolResults}
+
+Analyze the gathered data for completeness and integrity.
+1. Are there any missing critical financial statements (Income, Balance, Cash Flow)?
+2. Are there any discrepancies between different data sources?
+3. Does the data directly answer the user's query, or are there logical gaps?
+4. What is the biggest remaining risk or "unknown" that hasn't been addressed?
+
+If the data is insufficient, identify EXACTLY what is missing.
+If the data is sufficient, summarize the key senior-level insights.
+Keep your critique concise.`;
+}

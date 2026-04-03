@@ -26,6 +26,14 @@ export function getFastModel(modelProvider: string, fallbackModel: string): stri
   return getProviderById(modelProvider)?.fastModel ?? fallbackModel;
 }
 
+/**
+ * Gets the reasoning model variant for the given provider.
+ * Useful for complex planning and analysis tasks.
+ */
+export function getReasoningModel(modelProvider: string, fallbackModel: string): string {
+  return getProviderById(modelProvider)?.reasoningModel ?? fallbackModel;
+}
+
 // Generic retry helper with exponential backoff
 async function withRetry<T>(fn: () => Promise<T>, provider: string, maxAttempts = 3): Promise<T> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {

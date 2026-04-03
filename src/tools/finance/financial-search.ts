@@ -42,6 +42,11 @@ Intelligent meta-tool for financial data research. Takes a natural language quer
 - Handles ticker resolution automatically (Apple -> AAPL, Microsoft -> MSFT)
 - Handles date inference (e.g., "last quarter", "past 5 years", "YTD")
 - Returns structured JSON data with source URLs for verification
+
+## Senior Analyst Requirements
+
+- **Cross-Verification**: When retrieving critical metrics like Net Income or FCF, always request at least 2 years of data to identify trends and anomalies.
+- **Precision**: Use the most specific tool for the job. Do not use financial_search for general news; use it for data that requires ticker-level precision.
 `.trim();
 
 /** Format snake_case tool name to Title Case for progress messages */
