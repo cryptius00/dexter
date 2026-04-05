@@ -7,6 +7,7 @@ import type { AgentEvent, ContextClearedEvent } from '../agent/types.js';
 import { runMemoryFlush, shouldRunMemoryFlush } from '../memory/flush.js';
 import type { RunContext } from './run-context.js';
 import type { Scratchpad } from './scratchpad.js';
+import { resolveProvider } from '../model/llm.js';
 
 export const MAX_OVERFLOW_RETRIES = 2;
 export const OVERFLOW_KEEP_TOOL_USES = 3;
@@ -57,6 +58,18 @@ export class ContextManager {
   }
 
   /**
+   * Calculate effective context threshold based on provider features (e.g. TurboQuant compression)
+   */
+  private getEffectiveThreshold(modelId: string): number {
+    const provider = resolveProvider(modelId);
+    // If backend supports KV Cache Quantization (TurboQuant), we can effectively double/triple the threshold
+    if (provider.features?.kvCacheQuantization) {
+      return CONTEXT_THRESHOLD * 4; // 4x expansion for TurboQuant Q4
+    }
+    return CONTEXT_THRESHOLD;
+  }
+
+  /**
    * Clear oldest tool results if context size exceeds threshold.
    */
   async *manageThreshold(
@@ -66,8 +79,9 @@ export class ContextManager {
   ): AsyncGenerator<ContextClearedEvent | AgentEvent, void> {
     const fullToolResults = ctx.scratchpad.getToolResults();
     const estimatedContextTokens = estimateTokens(options.systemPrompt + ctx.query + fullToolResults);
+    const threshold = this.getEffectiveThreshold(options.model);
 
-    if (estimatedContextTokens > CONTEXT_THRESHOLD) {
+    if (estimatedContextTokens > threshold) {
       if (
         options.memoryEnabled &&
         shouldRunMemoryFlush({

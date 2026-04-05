@@ -9,7 +9,7 @@
   - Agent core: `src/agent/` (agent loop, prompts, scratchpad, token counting, types)
   - CLI interface: `src/cli.tsx` (Ink/React), entry point: `src/index.tsx`
   - Components: `src/components/` (Ink UI components)
-  - Hooks: `src/hooks/` (React hooks for agent runner, model selection, input history)
+  - Controllers: `src/controllers/` (Business logic for UI components, e.g. model selection)
   - Model/LLM: `src/model/llm.ts` (multi-provider LLM abstraction)
   - Tools: `src/tools/` (financial search, web search, browser, skill tool)
   - Tool descriptions: `src/tools/descriptions/` (rich descriptions injected into system prompt)
@@ -46,7 +46,7 @@
 ## LLM Providers
 
 - Supported: OpenAI (default), Anthropic, Google, xAI (Grok), OpenRouter, Ollama (local).
-- Default model: `gpt-5.4`. Provider detection is prefix-based (`claude-` -> Anthropic, `gemini-` -> Google, etc.).
+- Default model: `gpt-4o`. Provider detection is prefix-based (`claude-` -> Anthropic, `gemini-` -> Google, etc.).
 - Fast models for lightweight tasks: see `FAST_MODELS` map in `src/model/llm.ts`.
 - Anthropic uses explicit `cache_control` on system prompt for prompt caching cost savings.
 - Users switch providers/models via `/model` command in the CLI.
@@ -71,8 +71,9 @@
 ## Agent Architecture
 
 - Agent loop: `src/agent/agent.ts`. Iterative tool-calling loop with configurable max iterations (default 10).
+- Senior Workflow: includes "Research Planning" and "Self-Critique" phases using specialized reasoning models.
 - Scratchpad: `src/agent/scratchpad.ts`. Single source of truth for all tool results within a query.
-- Context management: Anthropic-style. Full tool results kept in context; oldest results cleared when token threshold exceeded.
+- Context management: `src/agent/context-manager.ts`. Anthropic-style context clearing and token thresholding.
 - Final answer: generated in a separate LLM call with full scratchpad context (no tools bound).
 - Events: agent yields typed events (`tool_start`, `tool_end`, `thinking`, `answer_start`, `done`, etc.) for real-time UI updates.
 

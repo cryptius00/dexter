@@ -18,6 +18,11 @@ export interface ProviderDef {
   defaultModel?: string;
   /** Specialized reasoning model for planning and complex analysis. */
   reasoningModel?: string;
+  /** Features supported by the inference engine (e.g. TurboQuant/PolarQuant) */
+  features?: {
+    kvCacheQuantization?: boolean;
+    streaming?: boolean;
+  };
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -83,6 +88,10 @@ export const PROVIDERS: ProviderDef[] = [
     id: 'ollama',
     displayName: 'Ollama',
     modelPrefix: 'ollama:',
+    features: {
+      kvCacheQuantization: true, // Support for q4_k/q8_0 cache compression
+      streaming: true,
+    },
   },
 ];
 

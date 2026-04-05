@@ -11,7 +11,7 @@ import { createRunContext, type RunContext } from './run-context.js';
 import { AgentToolExecutor } from './tool-executor.js';
 import { MemoryManager } from '../memory/index.js';
 import { ContextManager } from './context-manager.js';
-import { DEFAULT_MODEL, getReasoningModel } from '../model/llm.js';
+import { DEFAULT_MODEL, getReasoningModel, resolveProvider } from '../model/llm.js';
 
 
 const DEFAULT_MAX_ITERATIONS = 10;
@@ -45,7 +45,7 @@ export class Agent {
     this.signal = config.signal;
     this.memoryEnabled = config.memoryEnabled ?? true;
     this.contextManager = new ContextManager();
-    this.modelProvider = config.modelProvider;
+    this.modelProvider = config.modelProvider ?? resolveProvider(this.model).id;
   }
 
   /**
@@ -153,9 +153,14 @@ export class Agent {
         yield { type: 'thinking', message: trimmedText };
       }
 
-      // No tool calls = final answer is in this response
+      // No tool calls = potential final answer
       if (typeof response === 'string' || !hasToolCalls(response)) {
-        yield* this.handleDirectResponse(responseText ?? '', ctx);
+        // Perform senior audit if tools were used, otherwise direct response
+        if (ctx.scratchpad.hasToolResults()) {
+          yield* this.performSeniorAudit(query, ctx);
+        } else {
+          yield* this.handleDirectResponse(responseText ?? '', ctx);
+        }
         return;
       }
 
@@ -185,24 +190,6 @@ export class Agent {
 
       // Build iteration prompt with full tool results (Anthropic-style)
       currentPrompt = this.contextManager.buildIterationPrompt(query, ctx.scratchpad);
-    }
-
-    // Senior Self-Critique Phase
-    const auditModel = this.modelProvider ? getReasoningModel(this.modelProvider, this.model) : this.model;
-    const critiquePrompt = buildCritiquePrompt(query, ctx.scratchpad.getToolResults());
-    yield { type: 'thinking', message: `Performing senior audit using ${auditModel}...` };
-
-    const critiqueResult = await this.callModel(critiquePrompt, false, auditModel);
-    const critique = typeof critiqueResult.response === 'string' ? critiqueResult.response : extractTextContent(critiqueResult.response);
-
-    if (critique) {
-      ctx.scratchpad.addThinking(`SENIOR AUDIT:\n${critique}`);
-      // Final call to generate the answer with the critique in context
-      currentPrompt = this.contextManager.buildIterationPrompt(query, ctx.scratchpad);
-      const finalResult = await this.callModel(currentPrompt);
-      const finalResponse = typeof finalResult.response === 'string' ? finalResult.response : extractTextContent(finalResult.response);
-      yield* this.handleDirectResponse(finalResponse ?? '', ctx);
-      return;
     }
 
     // Max iterations reached with no final response
@@ -236,6 +223,31 @@ export class Agent {
       signal: this.signal,
     });
     return { response: result.response, usage: result.usage };
+  }
+
+  /**
+   * Perform a senior audit of the research results and generate a final verified answer.
+   */
+  private async *performSeniorAudit(
+    query: string,
+    ctx: RunContext
+  ): AsyncGenerator<AgentEvent, void> {
+    const auditModel = this.modelProvider ? getReasoningModel(this.modelProvider, this.model) : this.model;
+    const critiquePrompt = buildCritiquePrompt(query, ctx.scratchpad.getToolResults());
+    yield { type: 'thinking', message: `Performing senior audit using ${auditModel}...` };
+
+    const critiqueResult = await this.callModel(critiquePrompt, false, auditModel);
+    const critique = typeof critiqueResult.response === 'string' ? critiqueResult.response : extractTextContent(critiqueResult.response);
+
+    if (critique) {
+      ctx.scratchpad.addThinking(`SENIOR AUDIT:\n${critique}`);
+    }
+
+    // Final call to generate the answer with the critique in context
+    const currentPrompt = this.contextManager.buildIterationPrompt(query, ctx.scratchpad);
+    const finalResult = await this.callModel(currentPrompt);
+    const finalResponse = typeof finalResult.response === 'string' ? finalResult.response : extractTextContent(finalResult.response);
+    yield* this.handleDirectResponse(finalResponse ?? '', ctx);
   }
 
   /**

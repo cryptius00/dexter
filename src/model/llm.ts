@@ -15,6 +15,8 @@ import { logger } from '@/utils';
 import { classifyError, isNonRetryableError } from '@/utils/errors';
 import { resolveProvider, getProviderById } from '@/providers';
 
+export { resolveProvider };
+
 export const DEFAULT_PROVIDER = 'openai';
 export const DEFAULT_MODEL = 'gpt-4o';
 
@@ -127,6 +129,8 @@ const MODEL_FACTORIES: Record<string, ModelFactory> = {
       model: name.replace(/^ollama:/, ''),
       ...opts,
       ...(process.env.OLLAMA_BASE_URL ? { baseUrl: process.env.OLLAMA_BASE_URL } : {}),
+      // TurboQuant optimization: Pass num_ctx based on expanded threshold when using quantization
+      numCtx: resolveProvider(name).features?.kvCacheQuantization ? 128000 : 32000,
     }),
 };
 
