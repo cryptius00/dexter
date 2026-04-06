@@ -260,10 +260,22 @@ export class MemoryDatabase {
 
   deleteChunksForFile(filePath: string): number {
     const rows = this.db.query<{ id: number }>('SELECT id FROM chunks WHERE file_path = ?').all(filePath);
-    for (const row of rows) {
-      this.db.query('DELETE FROM chunks_fts WHERE chunk_id = ?').run(row.id);
+    if (rows.length === 0) {
+      return 0;
     }
-    this.db.query('DELETE FROM chunks WHERE file_path = ?').run(filePath);
+
+    this.db.exec('BEGIN TRANSACTION');
+    try {
+      this.db
+        .query('DELETE FROM chunks_fts WHERE chunk_id IN (SELECT id FROM chunks WHERE file_path = ?)')
+        .run(filePath);
+      this.db.query('DELETE FROM chunks WHERE file_path = ?').run(filePath);
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+
     return rows.length;
   }
 
