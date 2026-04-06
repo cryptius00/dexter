@@ -43,7 +43,6 @@ function elide(text: string, maxLen: number): string {
 async function handleInbound(cfg: GatewayConfig, inbound: WhatsAppInboundMessage): Promise<void> {
   const bodyPreview = elide(inbound.body.replace(/\n/g, ' '), 50);
   const isGroup = inbound.chatType === 'group';
-  console.log(`Inbound message ${inbound.from} (${inbound.chatType}, ${inbound.body.length} chars): "${bodyPreview}"`);
   debugLog(`[gateway] handleInbound from=${inbound.from} isGroup=${isGroup} body="${inbound.body.slice(0, 30)}..."`);
 
   // --- Group-specific: track member, check mention gating ---
@@ -124,7 +123,6 @@ async function handleInbound(cfg: GatewayConfig, inbound: WhatsAppInboundMessage
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       debugLog(`[gateway] outbound BLOCKED: ${msg}`);
-      console.log(msg);
       return;
     }
 
@@ -155,7 +153,6 @@ async function handleInbound(cfg: GatewayConfig, inbound: WhatsAppInboundMessage
       };
     }
 
-    console.log(`Processing message with agent...`);
     debugLog(`[gateway] running agent for session=${route.sessionKey}`);
     const startedAt = Date.now();
     const model = getSetting('modelId', 'gpt-5.4') as string;
@@ -189,16 +186,13 @@ async function handleInbound(cfg: GatewayConfig, inbound: WhatsAppInboundMessage
           accountId: inbound.accountId,
         });
       }
-      console.log(`Sent reply (${answer.length} chars, ${durationMs}ms)`);
       debugLog(`[gateway] reply sent`);
     } else {
-      console.log(`Agent returned empty response (${durationMs}ms)`);
       debugLog(`[gateway] empty answer, not sending`);
     }
   } catch (err) {
     stopTypingLoop();
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`Error: ${msg}`);
     debugLog(`[gateway] ERROR: ${msg}`);
   }
 }
