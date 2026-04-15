@@ -198,20 +198,20 @@ export function resolveWhatsAppAccount(
   const account = cfg.channels.whatsapp.accounts?.[accountId] ?? {};
   const authDir = account.authDir ?? dexterPath('credentials', 'whatsapp', accountId);
   const rawAllowFrom = account.allowFrom ?? cfg.channels.whatsapp.allowFrom ?? [];
-  const allowFrom = Array.from(
-    new Set(
-      rawAllowFrom
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-        .map((entry) => (entry === '*' ? '*' : normalizeE164(entry))),
-    ),
-  );
+  const allowFromSet = new Set<string>();
+  for (const entry of rawAllowFrom) {
+    const trimmed = entry.trim();
+    if (trimmed) {
+      allowFromSet.add(trimmed === '*' ? '*' : normalizeE164(trimmed));
+    }
+  }
+
   return {
     accountId,
     enabled: account.enabled ?? true,
     name: account.name,
     authDir,
-    allowFrom,
+    allowFrom: Array.from(allowFromSet),
     dmPolicy: account.dmPolicy ?? 'pairing',
     groupPolicy: account.groupPolicy ?? 'disabled',
     groupAllowFrom: account.groupAllowFrom ?? [],
