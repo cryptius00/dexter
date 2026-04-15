@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import { normalizeE164 } from './utils.js';
@@ -136,8 +136,17 @@ export function getGatewayConfigPath(overridePath?: string): string {
   return overridePath ?? process.env.DEXTER_GATEWAY_CONFIG ?? DEFAULT_GATEWAY_PATH;
 }
 
+type ConfigCache = {
+  path: string;
+  mtimeMs: number;
+  config: GatewayConfig;
+};
+
+let globalConfigCache: ConfigCache | null = null;
+
 export function loadGatewayConfig(overridePath?: string): GatewayConfig {
   const path = getGatewayConfigPath(overridePath);
+
   if (!existsSync(path)) {
     return {
       gateway: { accountId: 'default', logLevel: 'info' },
@@ -145,9 +154,15 @@ export function loadGatewayConfig(overridePath?: string): GatewayConfig {
       bindings: [],
     };
   }
+
+  const stats = statSync(path);
+  if (globalConfigCache && globalConfigCache.path === path && globalConfigCache.mtimeMs === stats.mtimeMs) {
+    return { ...globalConfigCache.config };
+  }
+
   const raw = readFileSync(path, 'utf8');
   const parsed = GatewayConfigSchema.parse(JSON.parse(raw));
-  return {
+  const config: GatewayConfig = {
     ...parsed,
     gateway: {
       accountId: parsed.gateway?.accountId ?? 'default',
@@ -174,6 +189,14 @@ export function loadGatewayConfig(overridePath?: string): GatewayConfig {
     },
     bindings: parsed.bindings ?? [],
   };
+
+  globalConfigCache = {
+    path,
+    mtimeMs: stats.mtimeMs,
+    config,
+  };
+
+  return { ...config };
 }
 
 export function saveGatewayConfig(config: GatewayConfig, overridePath?: string): void {
@@ -183,6 +206,13 @@ export function saveGatewayConfig(config: GatewayConfig, overridePath?: string):
     mkdirSync(dir, { recursive: true });
   }
   writeFileSync(path, JSON.stringify(config, null, 2), 'utf8');
+
+  const stats = statSync(path);
+  globalConfigCache = {
+    path,
+    mtimeMs: stats.mtimeMs,
+    config,
+  };
 }
 
 export function listWhatsAppAccountIds(cfg: GatewayConfig): string[] {
