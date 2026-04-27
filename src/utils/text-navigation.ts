@@ -49,11 +49,12 @@ export function getLineAndColumn(text: string, pos: number): { line: number; col
  */
 export function getCursorPosition(text: string, line: number, column: number): number {
   const lines = text.split('\n');
+  if (line >= lines.length) return text.length;
   let pos = 0;
-  for (let i = 0; i < line && i < lines.length; i++) {
+  for (let i = 0; i < line; i++) {
     pos += lines[i].length + 1; // +1 for newline
   }
-  const targetLine = lines[line] || '';
+  const targetLine = lines[line]!;
   return pos + Math.min(column, targetLine.length);
 }
 
