@@ -113,9 +113,7 @@ export function createChannelManager<TConfig, TAccount>(params: {
 
   const startAll = async (): Promise<void> => {
     const ids = plugin.config.listAccountIds(loadConfig());
-    for (const id of ids) {
-      await startAccount(id);
-    }
+    await Promise.all(ids.map((id) => startAccount(id)));
   };
 
   const stopAll = async (): Promise<void> => {
@@ -124,9 +122,7 @@ export function createChannelManager<TConfig, TAccount>(params: {
       ...store.tasks.keys(),
       ...store.aborts.keys(),
     ]);
-    for (const id of ids) {
-      await stopAccount(id);
-    }
+    await Promise.all(Array.from(ids).map((id) => stopAccount(id)));
   };
 
   const getSnapshot = (): Record<string, ChannelRuntimeSnapshot> => {
