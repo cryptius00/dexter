@@ -116,9 +116,7 @@ function replaceMarkers(content: string): string {
   ];
 
   for (const pattern of patterns) {
-    pattern.regex.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.regex.exec(folded)) !== null) {
+    for (const match of folded.matchAll(pattern.regex)) {
       replacements.push({
         start: match.index,
         end: match.index + match[0].length,
