@@ -4,6 +4,7 @@ import type { WaSocket } from './session.js';
 import { loadGatewayConfig, resolveWhatsAppAccount } from '../../config.js';
 import { normalizeE164, toWhatsappJid } from '../../utils.js';
 import { dexterPath } from '../../../utils/paths.js';
+import { logger } from '../../../utils/logger.js';
 
 function debugLog(msg: string) {
   try {
@@ -106,7 +107,7 @@ export async function sendMessageWhatsApp(params: {
   const result = await active.sock.sendMessage(to, payload);
   const durationMs = Date.now() - startedAt;
   const messageId = result?.key?.id ?? 'unknown';
-  console.log(`Sent message ${messageId} -> ${to} (${durationMs}ms)`);
+  logger.info(`Sent message ${messageId} -> ${to} (${durationMs}ms)`);
   debugLog(`[outbound] sendMessage result id=${messageId}`);
   return { messageId, toJid: to };
 }

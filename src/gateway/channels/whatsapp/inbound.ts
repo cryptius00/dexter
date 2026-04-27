@@ -15,6 +15,7 @@ import { checkInboundAccessControl } from '../../access-control.js';
 import { resolveJidToPhoneJid, type LidLookup } from './lid.js';
 import { appendFileSync } from 'node:fs';
 import { dexterPath } from '../../../utils/paths.js';
+import { logger } from '../../../utils/logger.js';
 
 const LOG_PATH = dexterPath('gateway-debug.log');
 function debugLog(msg: string) {
@@ -124,7 +125,7 @@ export async function monitorWebInbox(params: {
     verbose: params.verbose,
   });
   await waitForWaConnection(sock);
-  console.log('[whatsapp] Connected');
+  logger.info('[whatsapp] Connected');
   const connectedAtMs = Date.now();
   const selfJid = sock.user?.id;
   const selfLid = (sock.user as unknown as Record<string, unknown>)?.lid as string | undefined ?? null;
@@ -296,7 +297,7 @@ export async function monitorWebInbox(params: {
     if (update.connection === 'close') {
       const status = getStatusCode(update.lastDisconnect?.error);
       const isLoggedOut = isLoggedOutReason(update.lastDisconnect?.error);
-      console.log(`[whatsapp] Disconnected (status=${status}, loggedOut=${isLoggedOut})`);
+      logger.info(`[whatsapp] Disconnected (status=${status}, loggedOut=${isLoggedOut})`);
       resolveClose({
         status,
         isLoggedOut,

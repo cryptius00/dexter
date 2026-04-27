@@ -1,6 +1,7 @@
 import qrcode from 'qrcode-terminal';
 import { createWaSocket, getStatusCode, waitForWaConnection } from './session.js';
 import { formatError } from './error.js';
+import { logger } from '../../../utils/logger.js';
 
 export type LoginResult = {
   phone: string | null;
@@ -31,7 +32,7 @@ export async function loginWhatsApp(params: { authDir: string }): Promise<LoginR
       if (resolved) {
         return;
       }
-      console.log('Scan this QR in WhatsApp -> Linked Devices:');
+      logger.info('Scan this QR in WhatsApp -> Linked Devices:');
       qrcode.generate(qr, { small: true });
     },
   });
@@ -40,14 +41,14 @@ export async function loginWhatsApp(params: { authDir: string }): Promise<LoginR
     await waitForWaConnection(sock);
     resolved = true;
     const phone = extractPhoneFromJid(sock.user?.id);
-    console.log('WhatsApp linked successfully.');
+    logger.info('WhatsApp linked successfully.');
     return { phone };
   } catch (err) {
     const code = getErrorStatusCode(err);
 
     // Handle 515 "restart required" - WhatsApp asks for reconnection after pairing
     if (code === 515) {
-      console.log('WhatsApp asked for restart (code 515); credentials saved. Retrying connection...');
+      logger.info('WhatsApp asked for restart (code 515); credentials saved. Retrying connection...');
       try {
         sock.ws.close();
       } catch {
@@ -64,7 +65,7 @@ export async function loginWhatsApp(params: { authDir: string }): Promise<LoginR
         await waitForWaConnection(retry);
         resolved = true;
         const phone = extractPhoneFromJid(retry.user?.id);
-        console.log('WhatsApp linked successfully after restart.');
+        logger.info('WhatsApp linked successfully after restart.');
         return { phone };
       } finally {
         setTimeout(() => {
@@ -79,7 +80,7 @@ export async function loginWhatsApp(params: { authDir: string }): Promise<LoginR
 
     // Other errors
     const formatted = formatError(err);
-    console.error(`WhatsApp connection failed: ${formatted}`);
+    logger.error(`WhatsApp connection failed: ${formatted}`);
     throw new Error(formatted, { cause: err });
   } finally {
     setTimeout(() => {

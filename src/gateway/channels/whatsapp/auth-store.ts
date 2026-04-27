@@ -1,6 +1,7 @@
 import { existsSync, statSync, readFileSync, copyFileSync, rmSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { logger } from '../../../utils/logger.js';
 
 export function resolveCredsPath(authDir: string): string {
   return join(authDir, 'creds.json');
@@ -56,7 +57,7 @@ export function maybeRestoreCredsFromBackup(authDir: string): void {
     // Ensure backup is parseable before restoring
     JSON.parse(backupRaw);
     copyFileSync(backupPath, credsPath);
-    console.log('Restored WhatsApp creds.json from backup');
+    logger.info('Restored WhatsApp creds.json from backup');
   } catch {
     // ignore
   }
@@ -131,10 +132,10 @@ function jidToE164(jid: string): string | null {
 export async function logout(authDir: string): Promise<boolean> {
   const exists = await authExists(authDir);
   if (!exists) {
-    console.log('No WhatsApp session found; nothing to delete.');
+    logger.info('No WhatsApp session found; nothing to delete.');
     return false;
   }
   await rm(authDir, { recursive: true, force: true });
-  console.log('Cleared WhatsApp credentials.');
+  logger.info('Cleared WhatsApp credentials.');
   return true;
 }

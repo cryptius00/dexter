@@ -4,6 +4,7 @@ import { logout } from './auth-store.js';
 import type { WhatsAppInboundMessage } from './types.js';
 import type { ReconnectPolicy } from './reconnect.js';
 import { computeBackoff, DEFAULT_RECONNECT_POLICY } from './reconnect.js';
+import { logger } from '../../../utils/logger.js';
 
 export async function monitorWhatsAppChannel(params: {
   accountId: string;
@@ -55,7 +56,7 @@ export async function monitorWhatsAppChannel(params: {
       heartbeat = setInterval(() => {
         const uptimeMs = Date.now() - startedAt;
         if (params.verbose) {
-          console.log(
+          logger.info(
             `[whatsapp heartbeat] account=${params.accountId} messages=${handledMessages} uptimeMs=${uptimeMs}`,
           );
         }
