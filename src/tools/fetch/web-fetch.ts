@@ -33,6 +33,7 @@ import {
   withTimeout,
   writeCache,
 } from './cache.js';
+import { isSafeHost } from './ssrf-guard.js';
 
 /**
  * Rich description for the web_fetch tool.
@@ -244,6 +245,10 @@ async function fetchWithRedirects(params: {
       throw new Error("[Web Fetch] Invalid URL: must be http or https");
     }
 
+    if (!(await isSafeHost(parsedUrl.hostname))) {
+      throw new Error(`[Web Fetch] Forbidden URL: ${parsedUrl.hostname} is a private or local address`);
+    }
+
     const response = await fetch(parsedUrl.toString(), {
       redirect: "manual",
       headers: params.headers,
@@ -301,6 +306,10 @@ async function runWebFetch(params: {
   }
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
     throw new Error("[Web Fetch] Invalid URL: must be http or https");
+  }
+
+  if (!(await isSafeHost(parsedUrl.hostname))) {
+    throw new Error(`[Web Fetch] Forbidden URL: ${parsedUrl.hostname} is a private or local address`);
   }
 
   const start = Date.now();
