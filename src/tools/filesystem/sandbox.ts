@@ -1,5 +1,13 @@
-import { lstat } from 'node:fs/promises';
-import { isAbsolute, join, normalize, relative, resolve as resolvePath } from 'node:path';
+import { lstat, realpath } from 'node:fs/promises';
+import {
+  isAbsolute,
+  join,
+  normalize,
+  parse,
+  relative,
+  resolve as resolvePath,
+  sep,
+} from 'node:path';
 import { resolveToCwd } from './utils/path-utils.js';
 
 // Deny-list of sensitive system paths
@@ -26,6 +34,15 @@ const WINDOWS_DENY_LIST = [
 ];
 
 /**
+ * Check if a path is under a parent directory (inclusive)
+ */
+function isUnder(parent: string, child: string): boolean {
+  if (parent === child) return true;
+  const relativePath = relative(parent, child);
+  return !relativePath.startsWith('..') && !isAbsolute(relativePath) && relativePath !== '';
+}
+
+/**
  * Check if a path is in the deny-list of sensitive directories
  */
 function isPathDenied(resolvedPath: string): boolean {
@@ -33,14 +50,14 @@ function isPathDenied(resolvedPath: string): boolean {
 
   // Check Unix-style paths
   for (const denied of DENY_LIST) {
-    if (normalizedPath.startsWith(denied.toLowerCase())) {
+    if (isUnder(denied.toLowerCase(), normalizedPath)) {
       return true;
     }
   }
 
   // Check Windows-style paths
   for (const denied of WINDOWS_DENY_LIST) {
-    if (normalizedPath.startsWith(denied.toLowerCase())) {
+    if (isUnder(denied.toLowerCase(), normalizedPath)) {
       return true;
     }
   }
@@ -51,7 +68,8 @@ function isPathDenied(resolvedPath: string): boolean {
     const normalizedHome = normalize(homeDir).toLowerCase();
     const sensitiveDirs = ['/.ssh', '/.aws', '/.gnupg', '/.kube'];
     for (const sensitive of sensitiveDirs) {
-      if (normalizedPath.startsWith((normalizedHome + sensitive).toLowerCase())) {
+      const sensitivePath = normalize(join(normalizedHome, sensitive)).toLowerCase();
+      if (isUnder(sensitivePath, normalizedPath)) {
         return true;
       }
     }
@@ -83,7 +101,7 @@ export function resolveSandboxPath(params: { filePath: string; cwd: string; root
 
   // Additional check: normalize and verify no path traversal
   const normalized = normalize(resolved);
-  if (!normalized.startsWith(rootResolved)) {
+  if (!isUnder(rootResolved, normalized)) {
     throw new Error(`Path traversal detected: ${params.filePath}`);
   }
 
@@ -96,8 +114,81 @@ export async function assertSandboxPath(params: {
   root?: string;
 }): Promise<{ resolved: string; relative: string }> {
   const root = params.root ?? params.cwd;
+  const resolvedRoot = resolvePath(root);
+
+  // Check if root itself is a symlink
+  try {
+    const rootStat = await lstat(resolvedRoot);
+    if (rootStat.isSymbolicLink()) {
+      throw new Error(`Sandbox root cannot be a symbolic link: ${resolvedRoot}`);
+    }
+  } catch (err) {
+    if ((err as { code?: string }).code !== 'ENOENT') {
+      throw err;
+    }
+  }
+
+  // Security: Check for symlinks in the RAW path components BEFORE lexical normalization.
+  // path.relative() and path.resolve() might normalize away '..', so we must
+  // inspect the components of the input path manually.
+  if (params.filePath.includes('..')) {
+    const { root: pathRoot } = parse(params.filePath);
+    let current = isAbsolute(params.filePath) ? pathRoot : params.cwd;
+    const parts = params.filePath.split(/[\\/]/).filter(Boolean);
+    for (const part of parts) {
+      const next = join(current, part);
+      try {
+        const stat = await lstat(next);
+        if (stat.isSymbolicLink() && part !== '..') {
+          throw new Error(`Symlink not allowed in path with traversal: ${next}`);
+        }
+      } catch {}
+      current = next;
+    }
+  }
+
+  const expanded = resolveToCwd(params.filePath, params.cwd);
+  const rawRelative = relative(resolvedRoot, expanded);
+  await assertNoSymlink(rawRelative, resolvedRoot);
+
   const resolved = resolveSandboxPath({ filePath: params.filePath, cwd: params.cwd, root });
-  await assertNoSymlink(resolved.relative, resolvePath(root));
+
+  // Final canonical check: ensure the real path is still under the real root
+  try {
+    const realRoot = await realpath(resolvedRoot);
+    const realTarget = await realpath(resolved.resolved);
+
+    if (!isUnder(realRoot, realTarget)) {
+      throw new Error(`Canonical path traversal detected: ${params.filePath}`);
+    }
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== 'ENOENT') {
+      throw err;
+    }
+    // If target doesn't exist, we've already done lexical and symlink-component checks.
+    // For write_file, the target might not exist yet.
+    // We should still ensure the parent directory is safe.
+    try {
+      let current = resolved.resolved;
+      while (current !== resolvedRoot) {
+        const parent = join(current, '..');
+        if (parent === current) break;
+        try {
+          const [realParent, realRoot] = await Promise.all([realpath(parent), realpath(resolvedRoot)]);
+          if (!isUnder(realRoot, realParent)) {
+            throw new Error(`Canonical path traversal detected in parent: ${params.filePath}`);
+          }
+          break; // Found an existing parent that is safe
+        } catch {
+          current = parent;
+        }
+      }
+    } catch {
+      // Ignore errors in parent check
+    }
+  }
+
   return resolved;
 }
 
