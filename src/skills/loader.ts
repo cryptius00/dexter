@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import matter from 'gray-matter';
 import type { Skill, SkillSource } from './types.js';
 

@@ -7,9 +7,9 @@
  *
  * Cache files live in .dexter/cache/ (already gitignored via .dexter/*).
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
-import { join, dirname } from 'path';
-import { createHash } from 'crypto';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { createHash } from 'node:crypto';
 import { logger } from './logger.js';
 import { dexterPath } from './paths.js';
 

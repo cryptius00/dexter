@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import { callLlm, DEFAULT_MODEL } from '../model/llm.js';
 import {
   DEFAULT_HISTORY_LIMIT,
