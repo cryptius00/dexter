@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { createHash } from 'crypto';
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { dexterPath } from '../utils/paths.js';
 
 /**

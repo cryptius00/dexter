@@ -1,3 +1,4 @@
+import { logger } from "../../../utils/logger.js";
 import { monitorWebInbox } from './inbound.js';
 import { setActiveWebListener } from './outbound.js';
 import { logout } from './auth-store.js';
@@ -55,7 +56,7 @@ export async function monitorWhatsAppChannel(params: {
       heartbeat = setInterval(() => {
         const uptimeMs = Date.now() - startedAt;
         if (params.verbose) {
-          console.log(
+          logger.info(
             `[whatsapp heartbeat] account=${params.accountId} messages=${handledMessages} uptimeMs=${uptimeMs}`,
           );
         }

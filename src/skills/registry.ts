@@ -1,5 +1,5 @@
-import { existsSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { existsSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'url';
 import type { SkillMetadata, Skill, SkillSource } from './types.js';
 import { extractSkillMetadata, loadSkillFromPath } from './loader.js';

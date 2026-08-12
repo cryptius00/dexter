@@ -1,6 +1,6 @@
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { getDexterDir } from './paths.js';
 
 /**
