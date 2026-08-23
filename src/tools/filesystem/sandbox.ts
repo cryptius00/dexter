@@ -1,5 +1,5 @@
 import { lstat } from 'node:fs/promises';
-import { isAbsolute, join, normalize, relative, resolve as resolvePath } from 'node:path';
+import { isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { resolveToCwd } from './utils/path-utils.js';
 
 // Deny-list of sensitive system paths
@@ -65,7 +65,7 @@ export function resolveSandboxPath(params: { filePath: string; cwd: string; root
   relative: string;
 } {
   const resolved = resolveToCwd(params.filePath, params.cwd);
-  const rootResolved = resolvePath(params.root);
+  const rootResolved = resolve(params.root);
   const rel = relative(rootResolved, resolved);
 
   if (!rel || rel === '') {
@@ -97,7 +97,7 @@ export async function assertSandboxPath(params: {
 }): Promise<{ resolved: string; relative: string }> {
   const root = params.root ?? params.cwd;
   const resolved = resolveSandboxPath({ filePath: params.filePath, cwd: params.cwd, root });
-  await assertNoSymlink(resolved.relative, resolvePath(root));
+  await assertNoSymlink(resolved.relative, resolve(root));
   return resolved;
 }
 
