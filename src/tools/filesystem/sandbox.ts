@@ -1,5 +1,5 @@
 import { lstat } from 'node:fs/promises';
-import { isAbsolute, join, normalize, relative, resolve as resolvePath } from 'node:path';
+import { isAbsolute, join, normalize, relative, resolve as resolvePath, sep } from 'node:path';
 import { resolveToCwd } from './utils/path-utils.js';
 
 // Deny-list of sensitive system paths
@@ -31,16 +31,23 @@ const WINDOWS_DENY_LIST = [
 function isPathDenied(resolvedPath: string): boolean {
   const normalizedPath = normalize(resolvedPath).toLowerCase();
 
+  const isInDir = (path: string, dir: string) => {
+    const normalizedDir = normalize(dir).toLowerCase();
+    return (
+      path === normalizedDir || path.startsWith(normalizedDir.endsWith(sep) ? normalizedDir : normalizedDir + sep)
+    );
+  };
+
   // Check Unix-style paths
   for (const denied of DENY_LIST) {
-    if (normalizedPath.startsWith(denied.toLowerCase())) {
+    if (isInDir(normalizedPath, denied)) {
       return true;
     }
   }
 
   // Check Windows-style paths
   for (const denied of WINDOWS_DENY_LIST) {
-    if (normalizedPath.startsWith(denied.toLowerCase())) {
+    if (isInDir(normalizedPath, denied)) {
       return true;
     }
   }
@@ -51,7 +58,7 @@ function isPathDenied(resolvedPath: string): boolean {
     const normalizedHome = normalize(homeDir).toLowerCase();
     const sensitiveDirs = ['/.ssh', '/.aws', '/.gnupg', '/.kube'];
     for (const sensitive of sensitiveDirs) {
-      if (normalizedPath.startsWith((normalizedHome + sensitive).toLowerCase())) {
+      if (isInDir(normalizedPath, normalizedHome + sensitive)) {
         return true;
       }
     }
@@ -83,7 +90,8 @@ export function resolveSandboxPath(params: { filePath: string; cwd: string; root
 
   // Additional check: normalize and verify no path traversal
   const normalized = normalize(resolved);
-  if (!normalized.startsWith(rootResolved)) {
+  const rootWithSep = rootResolved.endsWith(sep) ? rootResolved : rootResolved + sep;
+  if (normalized !== rootResolved && !normalized.startsWith(rootWithSep)) {
     throw new Error(`Path traversal detected: ${params.filePath}`);
   }
 
