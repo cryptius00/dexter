@@ -18,6 +18,13 @@ export interface ProviderDef {
 
 export const PROVIDERS: ProviderDef[] = [
   {
+    id: 'nvidia',
+    displayName: 'NVIDIA NIM',
+    modelPrefix: 'nvidia-',
+    apiKeyEnvVar: 'NVIDIA_API_KEY',
+    fastModel: 'nvidia-llama-3.1-nemotron-70b-instruct',
+  },
+  {
     id: 'openai',
     displayName: 'OpenAI',
     modelPrefix: '',
