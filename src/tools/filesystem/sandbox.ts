@@ -1,5 +1,5 @@
 import { lstat } from 'node:fs/promises';
-import { isAbsolute, join, normalize, relative, resolve as resolvePath } from 'node:path';
+import { isAbsolute, join, normalize, relative, resolve as resolvePath, sep } from 'node:path';
 import { resolveToCwd } from './utils/path-utils.js';
 
 // Deny-list of sensitive system paths
@@ -83,7 +83,8 @@ export function resolveSandboxPath(params: { filePath: string; cwd: string; root
 
   // Additional check: normalize and verify no path traversal
   const normalized = normalize(resolved);
-  if (!normalized.startsWith(rootResolved)) {
+  const prefix = rootResolved.endsWith(sep) ? rootResolved : rootResolved + sep;
+  if (!normalized.startsWith(prefix) && normalized !== rootResolved) {
     throw new Error(`Path traversal detected: ${params.filePath}`);
   }
 
