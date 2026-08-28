@@ -16,7 +16,7 @@ import { classifyError, isNonRetryableError } from '@/utils/errors';
 import { resolveProvider, getProviderById } from '@/providers';
 
 export const DEFAULT_PROVIDER = 'openai';
-export const DEFAULT_MODEL = 'gpt-5.4';
+export const DEFAULT_MODEL = 'gpt-5.6-sol';
 
 /**
  * Gets the fast model variant for the given provider.
@@ -66,6 +66,15 @@ function getApiKey(envVar: string): string {
 
 // Factories keyed by provider id — prefix routing is handled by resolveProvider()
 const MODEL_FACTORIES: Record<string, ModelFactory> = {
+  nvidia: (name, opts) =>
+    new ChatOpenAI({
+      model: name.replace(/^nvidia-/, ''),
+      ...opts,
+      apiKey: getApiKey('NVIDIA_API_KEY'),
+      configuration: {
+        baseURL: 'https://integrate.api.nvidia.com/v1',
+      },
+    }),
   anthropic: (name, opts) =>
     new ChatAnthropic({
       model: name,

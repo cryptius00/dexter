@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "postinstall": "playwright install chromium"
+    "postinstall": "playwright install chromium",
+    "test:e2e": "bun run src/evals/smoke-test.ts"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.1.3",
@@ -27,13 +28,13 @@
     "@langchain/tavily": "^1.0.1",
     "@mariozechner/pi-tui": "^0.52.9",
     "@mozilla/readability": "^0.6.0",
-    "@whiskeysockets/baileys": "7.0.0-rc.9",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
     "better-sqlite3": "^12.6.2",
     "diff": "^8.0.3",
     "dotenv": "^17.2.3",
     "exa-js": "^2.2.0",
     "gray-matter": "^4.0.3",
-    "langsmith": "^0.4.10",
+    "langsmith": "^0.9.0",
     "linkedom": "^0.18.12",
     "playwright": "^1.52.0",
     "qrcode-terminal": "^0.12.0",

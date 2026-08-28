@@ -59,7 +59,24 @@ After installation, restart your terminal and verify Bun is installed:
 bun --version
 ```
 
+
 ## 💻 How to Install
+
+### Option 1: Quick Setup (Recommended)
+
+1. Clone the repository:
+```bash
+git clone https://github.com/virattt/dexter.git
+cd dexter
+```
+
+2. Run the interactive setup script:
+```bash
+./setup.sh
+```
+This script will automatically install dependencies, configure your environment variables (API Keys), run checks, and launch the agent.
+
+### Option 2: Manual Setup
 
 1. Clone the repository:
 ```bash
@@ -83,6 +100,7 @@ cp env.example .env
 # GOOGLE_API_KEY=your-google-api-key (optional)
 # XAI_API_KEY=your-xai-api-key (optional)
 # OPENROUTER_API_KEY=your-openrouter-api-key (optional)
+# NVIDIA_API_KEY=your-nvidia-api-key (optional)
 
 # Institutional-grade market data for agents; AAPL, NVDA, MSFT are free
 # FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key

@@ -74,10 +74,10 @@ export function truncateText(
   value: string,
   maxChars: number,
 ): { text: string; truncated: boolean } {
-  if (value.length <= maxChars) {
+  if (Array.from(value).length <= maxChars) {
     return { text: value, truncated: false };
   }
-  return { text: value.slice(0, maxChars), truncated: true };
+  return { text: Array.from(value).slice(0, maxChars).join(''), truncated: true };
 }
 
 export async function extractReadableContent(params: {

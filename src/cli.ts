@@ -1,3 +1,4 @@
+import { SetupWizardController } from './controllers/setup-wizard.js';
 import { Container, ProcessTerminal, Spacer, Text, TUI } from '@mariozechner/pi-tui';
 import type {
   ApprovalDecision,
@@ -171,6 +172,11 @@ export async function runCli() {
     tui.requestRender();
   };
 
+
+  const setupWizard = new SetupWizardController(() => {
+    tui.requestRender();
+  });
+
   const modelSelection = new ModelSelectionController(onError, () => {
     intro.setModel(modelSelection.model);
     renderSelectionOverlay();
@@ -291,6 +297,22 @@ export async function runCli() {
 
   const renderSelectionOverlay = () => {
     const state = modelSelection.state;
+
+    if (!setupWizard.isComplete()) {
+      const step = setupWizard.getCurrentStep();
+      const input = new ApiKeyInputComponent(true);
+      input.onSubmit = (val) => setupWizard.submit(val);
+      input.onCancel = () => setupWizard.skip();
+      renderScreenView(
+        `Initial Setup: ${step.title}`,
+        step.description,
+        input,
+        'Enter to save · Esc to skip this step',
+        input
+      );
+      return;
+    }
+
     if (state.appState === 'idle' && !agentRunner.pendingApproval) {
       refreshError();
       renderMainView();
